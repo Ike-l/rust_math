@@ -1,3 +1,4 @@
+// Traits? Swizzels
 use std::ops::{Mul,Div,Add,Sub};
 
 macro_rules! vectors {
@@ -9,7 +10,6 @@ macro_rules! vectors {
                 pub fn $axis(&self) -> f32 {
                     self.0[$index]
                 }
-                
                 pub fn $axis_fn() -> Self {
                     let mut arr = [0.0; $dim];
                     arr[$index] = 1.0;
@@ -21,29 +21,35 @@ macro_rules! vectors {
             }
             pub fn normalise(&self) -> Self {
                 let magnitude = self.magnitude();
+                // chose not to panic, a normalised empty vector is just an empty vector
                 if magnitude == 0.0 {
                     return Self::new();
-                };
+                }
                 
                 self.scalar_mult(1.0/magnitude)
             }
-            pub fn magnitude(&self) -> f32 {
-                self.0.iter().fold(0.0, |sum, val| sum + val * val).sqrt()
-            }
-            pub fn scalar_mult(&self, scale: f32) -> Self {
+            fn scalar_mult(&self, scale: f32) -> Self {
                 $Vec(self.0.map(|val| val * scale))
             }
-            pub fn scalar_add(&self, num: f32) -> Self {
+            fn scalar_add(&self, num: f32) -> Self {
                 $Vec(self.0.map(|val| val + num))
             }
-            pub fn scalar_div(&self, scale: f32) -> Self {
+            fn scalar_div(&self, scale: f32) -> Self {
                 $Vec(self.0.map(|val| val / scale))
             }
-            pub fn scalar_sub(&self, num: f32) -> Self {
+            fn scalar_sub(&self, num: f32) -> Self {
                 $Vec(self.0.map(|val| val - num))
             }
             pub fn dot(&self, other: &Self) -> f32 {
                 self.0.iter().zip(other.0.iter()).map(|(a, b)| a * b).sum()
+            }
+            pub fn magnitude(&self) -> f32 {
+                self.0.iter().fold(0.0, |sum, val| sum + val * val).sqrt()
+            }
+            pub fn cos(&self, other: &Self) -> f32 {
+                // chose to panic since there is no meaning in cos(angle) of a vector with zero magnitude
+                assert!(self.magnitude() != 0.0 && other.magnitude() != 0.0, "Magnitude of one of the vectors is zero");
+                self.dot(other)/(self.magnitude()*other.magnitude())
             }
         }
         impl Mul<f32> for $Vec {
@@ -97,6 +103,11 @@ impl Vec3 {
             self.0[0] * other.0[1] - other.0[0] * self.0[1],
         ])
     }
+    pub fn sin(&self, other: &Self) -> f32 {
+        // chose to panic since there is no meaning in sin(angle) of a vector with zero magnitude
+        assert!(self.magnitude() != 0.0 && other.magnitude() != 0.0, "Magnitude of one of the vectors is zero");
+        self.cross(other).magnitude()/(self.magnitude()*other.magnitude())
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -124,26 +135,20 @@ mod tests {
     }
     #[test]
     fn vector_scalar_mult() {
-        assert_eq!(Vec2([3.0, 4.0]).scalar_mult(2.0), Vec2([6.0, 8.0]));
-
         assert_eq!(Vec2([3.0, 4.0]) * 2.0, Vec2([6.0, 8.0]));
         assert_eq!(2.0 * Vec2([3.0, 4.0]), Vec2([6.0, 8.0]));
     }
     #[test]
     fn vector_scalar_div() {
-        assert_eq!(Vec2([2.0, 3.0]).scalar_div(2.0), Vec2([1.0, 1.5]));
-
         assert_eq!(Vec2([2.0, 3.0]) / 2.0, Vec2([1.0, 1.5]));
     }
     #[test]
     fn vector_scalar_add() {
-        assert_eq!(Vec2([3.0, 4.0]).scalar_add(2.0), Vec2([5.0, 6.0]));
         assert_eq!(Vec2([3.0, 4.0]) + 2.0, Vec2([5.0, 6.0]));
         assert_eq!(2.0 + Vec2([3.0, 4.0]), Vec2([5.0, 6.0]));
     }
     #[test]
     fn vector_scalar_sub() {
-        assert_eq!(Vec2([3.0, 4.0]).scalar_sub(2.0), Vec2([1.0, 2.0]));
         assert_eq!(Vec2([3.0, 4.0]) - 2.0, Vec2([1.0, 2.0]));
     }
     #[test]
@@ -162,7 +167,30 @@ mod tests {
         let v2 = Vec3([3.0, 2.0, 1.0]);
         assert_eq!(v.cross(&v2), Vec3([-4.0, 8.0, -4.0]));
     }
+    #[test]
+    fn vector_cos() {
+        let v = Vec3([1.0, 2.0, 3.0]);
+        let v2 = Vec3([3.0, 2.0, 1.0]);
+        assert_eq!(v.cos(&v2), 0.7142857)
+    }
+    #[test]
+    #[should_panic = "Magnitude of one of the vectors is zero"]
+    fn vector_cos_zero() {
+        let v = Vec3([0.0; 3]);
+        let v2 = Vec3([3.0, 2.0, 1.0]);
+        v.cos(&v2);
+    }
+    #[test]
+    fn vector_sin() {
+        let v = Vec3([1.0, 2.0, 3.0]);
+        let v2 = Vec3([3.0, 2.0, 1.0]);
+        assert_eq!(v.sin(&v2), 0.6998542)
+    }
+    #[test]
+    #[should_panic = "Magnitude of one of the vectors is zero"]
+    fn vector_sin_zero() {
+        let v = Vec3([0.0; 3]);
+        let v2 = Vec3([3.0, 2.0, 1.0]);
+        v.sin(&v2);
+    }
 }
-/*
-operator overloading
-git*/
